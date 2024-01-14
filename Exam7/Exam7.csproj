@@ -7,4 +7,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="nomenclature.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="nomenclature.txt" />
+  </ItemGroup>
+
 </Project>

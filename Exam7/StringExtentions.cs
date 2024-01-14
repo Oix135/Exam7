@@ -1,10 +1,28 @@
-﻿namespace Exam7
+﻿using System;
+
+namespace Exam7
 {
     public static class StringExtentions
     {
-        public static string Genitive(this int count, Currency currency)
+        
+        public static string Genitive(this decimal count, Currency currency)
         {
             var lastDigit = count % 10;
+            var lastTwoDigit = count % 100;
+
+            if (lastTwoDigit >= 10 && lastTwoDigit < 20)
+            {
+                switch (currency)
+                {
+                    case Currency.RUB:
+                        return $"{count} рублей";
+                    case Currency.USD:
+                        return $"{count} долларов";
+                    default:
+                        return $"{count} евро";
+                }
+            }
+
 
             switch (lastDigit)
             {
@@ -44,7 +62,7 @@
                         switch (currency)
                         {
                             case Currency.RUB:
-                                return $"{count} рублея";
+                                return $"{count} рубля";
                             case Currency.USD:
                                 return $"{count} доллара";
                             default:
@@ -55,6 +73,11 @@
                     return $"{count} евро";
             }
         }
-
+        public static string RandomString(int length, Random random)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
     }
 }
