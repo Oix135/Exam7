@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics.Metrics;
+using System.Net;
 using System.Reflection;
 
 namespace Exam7
@@ -54,6 +56,7 @@ namespace Exam7
 
         private static void Start()
         {
+            
 
             while (!exitProgram)
             {
@@ -62,7 +65,7 @@ namespace Exam7
 
                 var maxLenName = Provider.Nomenclature.Max(a => a.Name.Length);
 
-                foreach(var pr in Provider.Nomenclature)
+                foreach (var pr in Provider.Nomenclature)
                 {
                     string tab = SetOffset(maxLenName, pr.Name);
 
@@ -73,8 +76,9 @@ namespace Exam7
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("\nЗаполнить склад: {0}", 1);
                 _ = int.TryParse(Console.ReadLine(), out int str);
-                if(str != 1)
+                if (str != 1)
                 {
+                    CheckExit();
                     continue;
                 }
                 else
@@ -88,7 +92,7 @@ namespace Exam7
                         {
                             stock.Products.Add(prod);
                         }
-                        
+
                     }
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine("Поставщик доставил на склад:\n");
@@ -111,18 +115,19 @@ namespace Exam7
                     _ = int.TryParse(Console.ReadLine(), out str);
                     if (str != 2)
                     {
+                        CheckExit();
                         continue;
                     }
                     else
                     {
-
                         var order = new Order<HomeDelivery>(StringExtentions.RandomString(6, random));
                         Console.WriteLine($"Заказ-наряд № {order.Number} создан!");
                         Console.ForegroundColor = ConsoleColor.White;
                         Console.WriteLine("\nДобавить товар: {0}", 3);
                         _ = int.TryParse(Console.ReadLine(), out str);
-                        if(str != 3)
+                        if (str != 3)
                         {
+                            CheckExit();
                             continue;
                         }
                         else
@@ -153,7 +158,7 @@ namespace Exam7
                                         }
                                         else
                                         {
-                                            order.Products.Add(new Product { Count = 1, Name = product.Name, VendorCode = product.VendorCode, Price = product.Price});
+                                            order.Products.Add(new Product { Count = 1, Name = product.Name, VendorCode = product.VendorCode, Price = product.Price });
                                         }
                                         Console.WriteLine($"{product.Name} добавлен! Осталось на складе {prod.Count}");
                                     }
@@ -165,15 +170,17 @@ namespace Exam7
                             Console.ForegroundColor = ConsoleColor.Green;
 
                             Console.WriteLine($"Заказ № {order.Number} сформирован!\n");
-                            foreach(var pr in order.Products)
+                            order.Confirm();
+                            foreach (var pr in order.Delivery.Products)
                             {
                                 string tab = SetOffset(maxLenName, pr.Name);
                                 Console.WriteLine($"Наименование: {pr.Name + tab}\tАртикул: {pr.VendorCode}\tКоличество: {pr.Count}" +
                                     $"\tЦена: {pr.Price.Genitive(Currency.RUB)}\tСумма {(pr.Price * pr.Count).Genitive(Currency.RUB)}");
-                               
+
                             }
                             Console.ForegroundColor = ConsoleColor.Cyan;
                             Console.WriteLine($"\nСумма заказа {order.Summ.Genitive(Currency.RUB)}");
+                            
                             order.Delivery.GetDeliveryDetails();
                             Console.ForegroundColor = ConsoleColor.White;
                         }
@@ -181,13 +188,18 @@ namespace Exam7
 
 
                 }
-                var key = Console.ReadKey();
-                if (key.Key == ConsoleKey.Escape)
-                {
-                    exitProgram = true;
-                }
+                CheckExit();
             }
 
+        }
+
+        private static void CheckExit()
+        {
+            var key = Console.ReadKey();
+            if (key.Key == ConsoleKey.Escape)
+            {
+                exitProgram = true;
+            }
         }
 
         private static string SetOffset(int maxLenName, string name)
@@ -245,39 +257,71 @@ namespace Exam7
                 };
             }
         }
-        abstract class Delivery
+        private abstract class Delivery
         {
             public string Address;
             public void DisplayAddress()
             {
                 Console.WriteLine(Address);
             }
+            public List<Product> Products { get; set; }
             public abstract void GetDeliveryDetails();
+            internal abstract List<Product> SetNDS();
         }
-        class HomeDelivery : Delivery
+
+        private class HomeDelivery : Delivery
         {
+            private decimal nds = 10;
             private string courier = "Иванов Иван";
+            private decimal courierPrice = 0;
             public override void GetDeliveryDetails()
             {
                 Console.WriteLine($"Товар доставит {courier}");
+                Console.WriteLine($"Стоимость доставки {courierPrice.Genitive(Currency.RUB)}");
 
             }
+            internal override List<Product> SetNDS()
+            {
+                courierPrice = 0;
+                foreach (var pr in Products)
+                {
+                    courierPrice += pr.Price / 100 * nds;
+                    pr.Price += pr.Price / 100 * nds;
+                }
+                return Products;
+            }
         }
-        class PickPointDelivery : Delivery
+        private class PickPointDelivery : Delivery
+        {
+            private decimal discount = 3;
+
+            public override void GetDeliveryDetails()
+            {
+                Console.WriteLine($"Скидка по промокоду {discount}%");
+            }
+
+            internal override List<Product> SetNDS()
+            {
+                foreach (var pr in Products)
+                {
+                    pr.Price -= pr.Price / 100 * discount;
+                }
+                return Products;
+            }
+        }
+        private class ShopDelivery : Delivery
         {
             public override void GetDeliveryDetails()
             {
-                throw new NotImplementedException();
+                Console.WriteLine($"Доставка в магазин");
             }
-        }
-        class ShopDelivery : Delivery
-        {
-            public override void GetDeliveryDetails()
+
+            internal override List<Product> SetNDS()
             {
-                throw new NotImplementedException();
+                return Products;
             }
         }
-        class Order<TDelivery> where TDelivery : new()
+        private class Order<TDelivery> where TDelivery : Delivery, new()
         {
             public Order(string number)
             {
@@ -289,8 +333,13 @@ namespace Exam7
             public List<Product> Products { get; } = new List<Product>();
 
             public decimal Summ => Products.Sum(a => a.Price * a.Count);
+
+            internal void Confirm()
+            {
+                Delivery.Products = Products;
+                Delivery.Products = Delivery.SetNDS();
+            }
         }
-        
     }
 
 }

@@ -7,8 +7,14 @@ namespace Exam7
         
         public static string Genitive(this decimal count, Currency currency)
         {
-            var lastDigit = count % 10;
-            var lastTwoDigit = count % 100;
+            count = Math.Round(count, 2);
+            var mas = count.ToString().Split(",");
+            var trunCount = mas.Length == 2 ? Convert.ToInt32(mas[1]) : Convert.ToInt32(mas[0]);
+
+
+
+            var lastDigit = trunCount % 10;
+            var lastTwoDigit = trunCount % 100;
 
             if (lastTwoDigit >= 10 && lastTwoDigit < 20)
             {
